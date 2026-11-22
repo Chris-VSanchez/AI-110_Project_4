@@ -1,7 +1,7 @@
 import random
 import streamlit as st
 
-from logic_utils import (get_range_for_difficulty, parse_guess, check_guess, update_score)
+from logic_utils import (get_range_for_difficulty, get_attempt_limit, is_guess_in_range, parse_guess, check_guess, update_score,)
 
 st.set_page_config(page_title = "Glitchy Guesser", page_icon = "🎮")
 
@@ -16,21 +16,17 @@ difficulty = st.sidebar.selectbox(
     index = 1,
 )
 
-attempt_limit_map = {
-    "Easy": 6,
-    "Normal": 8,
-    "Hard": 5,
-}
-
-attempt_limit = attempt_limit_map[difficulty]
-
+# Get game settings from logic_utils.py.
 low, high = get_range_for_difficulty(difficulty)
+attempt_limit = get_attempt_limit(difficulty)
 
 st.sidebar.caption(f"Range: {low} to {high}")
 st.sidebar.caption(f"Attempts allowed: {attempt_limit}")
 
-# Initialize the game or start a new game when difficulty changes.
-if "secret" not in st.session_state or st.session_state.get("game_difficulty") != difficulty:
+# Centralized game initialization and reset.
+def reset_game(difficulty, low, high):
+    """Initialize or reset all game session variables."""
+
     st.session_state.game_difficulty = difficulty
     st.session_state.secret = random.randint(low, high)
     st.session_state.attempts = 0
@@ -38,26 +34,14 @@ if "secret" not in st.session_state or st.session_state.get("game_difficulty") !
     st.session_state.status = "playing"
     st.session_state.history = []
 
-if "attempts" not in st.session_state:
-    st.session_state.attempts = 0
-
-if "score" not in st.session_state:
-    st.session_state.score = 0
-
-if "status" not in st.session_state:
-    st.session_state.status = "playing"
-
-if "history" not in st.session_state:
-    st.session_state.history = []
+# Initialize a new game or reset when difficulty changes.
+if "secret" not in st.session_state or st.session_state.game_difficulty != difficulty:
+    reset_game(difficulty, low, high)
 
 st.subheader("Make a guess")
 
-# Bug 3: "Attempts" counters are off by one
-# Fix: Attempts start at 0 and are only incremented after a valid guess
 attempts_left = max(0, attempt_limit - st.session_state.attempts)
 
-# Bug 4: New games will always be between 1-100 regardless of difficulty ranges
-# Fix: Use string templates to show the correct Low-High range
 st.info(
     f"Guess a number between {low} and {high}. "
     f"Attempts left: {attempts_left}"
@@ -72,10 +56,11 @@ with st.expander("Developer Debug Info"):
 
 raw_guess = st.text_input(
     "Enter your guess:",
-    key=f"guess_input_{difficulty}"
+    key = f"guess_input_{difficulty}"
 )
 
 col1, col2, col3 = st.columns(3)
+
 with col1:
     submit = st.button("Submit Guess 🚀")
 
@@ -83,45 +68,39 @@ with col2:
     new_game = st.button("New Game 🔁")
 
 with col3:
-    show_hint = st.checkbox("Show hint", value = True)
+    show_hint = st.checkbox("Show hint", value=True)
 
-# Bug 4: New games will always be between 1-100 regardless of difficulty ranges
-# Fix: Use actual Low-High variables to use the difficulty's correct range
-
-# Bug 6: Game history is preserved between games
-# Fix: Reset history to an empty list on new game
+# Start a new game and clear previous game data.
 if new_game:
-    st.session_state.attempts = 0
-    st.session_state.secret = random.randint(low, high)
-    st.session_state.score = 0
-    st.session_state.status = "playing"
-    st.session_state.history = []
+    reset_game(difficulty, low, high)
     st.rerun()
 
-
+# Stop further guesses after the game ends.
 if st.session_state.status != "playing":
+
     if st.session_state.status == "won":
         st.success("You already won. Start a new game to play again.")
-    
+
     else:
         st.error("Game over. Start a new game to try again.")
+
     st.stop()
 
-# Bug 2: Non-numeric inputs cause negative attempts
-# Fix: Correct what happens on submission and do not count non-numeric inputs as guesses
+# Process submitted guesses.
 if submit:
+
     ok, guess_int, err = parse_guess(raw_guess)
 
-    # Invalid input does not consume an attempt.
+    # Reject invalid input without consuming an attempt.
     if not ok:
         st.error(err)
 
-    # Guesses outside the selected difficulty range are rejected.
-    elif not low <= guess_int <= high:
+    # Reject guesses outside the selected difficulty range.
+    elif not is_guess_in_range(guess_int, low, high):
         st.error(f"Enter a number between {low} and {high}.")
 
     else:
-        # Only valid, in-range guesses consume attempts.
+        # Only valid guesses consume attempts.
         st.session_state.attempts += 1
         st.session_state.history.append(guess_int)
 
@@ -132,14 +111,16 @@ if submit:
         if show_hint:
             st.warning(message)
 
-        # Update the score based on the outcome and attempt number.
+        # Update score.
         st.session_state.score = update_score(
-            current_score = st.session_state.score,
-            outcome = outcome,
-            attempt_number = st.session_state.attempts,
+            current_score=st.session_state.score,
+            outcome=outcome,
+            attempt_number=st.session_state.attempts,
         )
 
+        # Handle winning guesses.
         if outcome == "Win":
+
             st.session_state.status = "won"
 
             st.balloons()
@@ -149,7 +130,9 @@ if submit:
                 f"Final score: {st.session_state.score}"
             )
 
+        # Handle running out of attempts.
         elif st.session_state.attempts >= attempt_limit:
+
             st.session_state.status = "lost"
 
             st.error(
@@ -158,5 +141,16 @@ if submit:
                 f"Score: {st.session_state.score}"
             )
 
+# Display game history.
 st.divider()
+st.subheader("Guess History")
+
+if st.session_state.history:
+    st.write(st.session_state.history)
+
+else:
+    st.caption("No guesses yet. Start playing!")
+
+st.divider()
+
 st.caption("Built by an AI that claims this code is production-ready.")
