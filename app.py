@@ -1,7 +1,14 @@
 import random
 import streamlit as st
+from dotenv import load_dotenv
 
 from logic_utils import (get_range_for_difficulty, get_attempt_limit, is_guess_in_range, parse_guess, check_guess, update_score,)
+from ai_hints import AIUnavailable, GeminiClient, generate_fun_fact, generate_hint
+from logging_config import get_logger
+
+# Load GEMINI_API_KEY (and optional GEMINI_MODEL) from a local .env file.
+load_dotenv()
+logger = get_logger("app")
 
 st.set_page_config(page_title = "Glitchy Guesser", page_icon = "🎮")
 
@@ -23,6 +30,36 @@ attempt_limit = get_attempt_limit(difficulty)
 st.sidebar.caption(f"Range: {low} to {high}")
 st.sidebar.caption(f"Attempts allowed: {attempt_limit}")
 
+st.sidebar.divider()
+ai_enabled = st.sidebar.toggle(
+    "🤖 AI hints & facts",
+    value=False,
+    help="After each wrong guess, Gemini gives a hint that gets more specific "
+         "as you use attempts. When the game ends, it shares a fun fact about the number.",
+)
+
+
+@st.cache_resource(show_spinner=False)
+def get_ai_client():
+    """Create the Gemini client once per server. Returns (client, error_message)."""
+
+    try:
+        return GeminiClient(), None
+    except AIUnavailable as exc:
+        logger.warning("AI unavailable: %s", exc)
+        return None, str(exc)
+
+
+ai_client = None
+
+if ai_enabled:
+    ai_client, ai_error = get_ai_client()
+
+    if ai_client:
+        st.sidebar.caption(f"AI model: {ai_client.model}")
+    else:
+        st.sidebar.warning(f"AI is offline ({ai_error}). Built-in hints will be used instead.")
+
 # Centralized game initialization and reset.
 def reset_game(difficulty, low, high):
     """Initialize or reset all game session variables."""
@@ -33,6 +70,35 @@ def reset_game(difficulty, low, high):
     st.session_state.score = 0
     st.session_state.status = "playing"
     st.session_state.history = []
+    st.session_state.ai_hints = []
+    st.session_state.fun_fact = None
+    logger.info("New game: difficulty=%s range=%d-%d", difficulty, low, high)
+
+def show_ai_hints():
+    """Show every AI hint given so far this game."""
+
+    for i, hint in enumerate(st.session_state.ai_hints, start=1):
+        label = "🤖 AI hint" if hint["source"] == "ai" else "💡 Built-in hint"
+        st.info(f"{label} #{i} ({hint['level']}): {hint['text']}")
+
+
+def show_fun_fact():
+    """Generate (once) and show a fun fact about the secret after the game ends."""
+
+    if not ai_enabled:
+        return
+
+    if st.session_state.fun_fact is None:
+        with st.spinner("Asking the AI for a fun fact..."):
+            result = generate_fun_fact(
+                ai_client,
+                st.session_state.secret,
+                won=st.session_state.status == "won",
+            )
+        st.session_state.fun_fact = result.text
+
+    st.success(f"🧠 Fun fact: {st.session_state.fun_fact}")
+
 
 # Initialize a new game or reset when difficulty changes.
 if "secret" not in st.session_state or st.session_state.game_difficulty != difficulty:
@@ -53,6 +119,7 @@ with st.expander("Developer Debug Info"):
     st.write("Score:", st.session_state.score)
     st.write("Difficulty:", difficulty)
     st.write("History:", st.session_state.history)
+    st.write("AI hints:", st.session_state.ai_hints)
 
 raw_guess = st.text_input(
     "Enter your guess:",
@@ -72,6 +139,7 @@ with col3:
 
 # Start a new game and clear previous game data.
 if new_game:
+    logger.info("Player started a new game")
     reset_game(difficulty, low, high)
     st.rerun()
 
@@ -84,6 +152,8 @@ if st.session_state.status != "playing":
     else:
         st.error("Game over. Start a new game to try again.")
 
+    show_ai_hints()
+    show_fun_fact()
     st.stop()
 
 # Process submitted guesses.
@@ -93,10 +163,12 @@ if submit:
 
     # Reject invalid input without consuming an attempt.
     if not ok:
+        logger.info("Rejected input %r: %s", raw_guess, err)
         st.error(err)
 
     # Reject guesses outside the selected difficulty range.
     elif not is_guess_in_range(guess_int, low, high):
+        logger.info("Rejected out-of-range guess %d", guess_int)
         st.error(f"Enter a number between {low} and {high}.")
 
     else:
@@ -107,6 +179,8 @@ if submit:
         secret = st.session_state.secret
 
         outcome, message = check_guess(guess_int, secret)
+        logger.info("Guess %d -> %s (attempt %d/%d)",
+                    guess_int, outcome, st.session_state.attempts, attempt_limit)
 
         if show_hint:
             st.warning(message)
@@ -140,6 +214,35 @@ if submit:
                 f"The secret was {secret}. "
                 f"Score: {st.session_state.score}"
             )
+
+        # Wrong guess with attempts left: ask the AI for a progressive hint.
+        elif ai_enabled:
+            with st.spinner("The AI is thinking of a hint..."):
+                result = generate_hint(
+                    ai_client,
+                    secret=secret,
+                    low=low,
+                    high=high,
+                    attempts_used=st.session_state.attempts,
+                    attempt_limit=attempt_limit,
+                    guesses=st.session_state.history,
+                    previous_hints=[h["text"] for h in st.session_state.ai_hints],
+                )
+
+            st.session_state.ai_hints.append(
+                {"text": result.text, "level": result.level_name, "source": result.source}
+            )
+
+            if result.filtered:
+                st.caption(f"🛡️ Filtered {result.filtered} AI response(s) that gave away the answer.")
+
+        if st.session_state.status != "playing":
+            logger.info("Game over: status=%s secret=%d score=%d",
+                        st.session_state.status, secret, st.session_state.score)
+            show_fun_fact()
+
+# Show AI hints for this game.
+show_ai_hints()
 
 # Display game history.
 st.divider()

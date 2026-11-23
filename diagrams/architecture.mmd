@@ -1,0 +1,40 @@
+flowchart TD
+    %% ---------- Input ----------
+    Player([👤 Player]) -->|guess + settings| UI["Streamlit UI<br/>app.py"]
+    UI -->|parse & validate| Logic["Game Logic<br/>logic_utils.py<br/>parse_guess · check_guess · update_score"]
+    Logic -->|Too High / Too Low / Win| UI
+
+    %% ---------- AI hint pipeline ----------
+    UI -->|"wrong guess + 🤖 toggle ON"| Level["Hint Level Planner<br/>get_hint_level()<br/>vague → moderate → specific → very specific"]
+    Level --> Prompt["Prompt Builder<br/>secret · range · attempts · past guesses · past hints"]
+    Prompt --> Gemini[["☁️ Google Gemini<br/>gemini-3.5-flash-lite"]]
+    Gemini -->|response text| Filter{"Answer Filter<br/>contains_secret()<br/>digits or words?"}
+    Filter -->|"leak detected → retry with feedback (max 3)"| Prompt
+    Gemini -.->|"error / 429 / timeout → backoff & retry"| Prompt
+    Filter -->|clean hint| UI
+    Filter -->|"still failing / no API key"| Fallback["Built-in Fallback Hint<br/>fallback_hint()"]
+    Fallback --> UI
+
+    %% ---------- End of game ----------
+    UI -->|"game over + 🤖 toggle ON"| Fact["Fun Fact Generator<br/>generate_fun_fact()"]
+    Fact --> Gemini
+    Fact --> UI
+    UI -->|hints, result, fun fact| Player
+
+    %% ---------- Logging ----------
+    Logger[("📜 logs/game.log<br/>logging_config.py")]
+    UI -.->|guesses, games| Logger
+    Filter -.->|filtered leaks| Logger
+    Gemini -.->|calls, errors, latency| Logger
+
+    %% ---------- Testing & human review ----------
+    subgraph Testing["🧪 Testing & Human Review"]
+        Pytest["pytest<br/>tests/test_game_logic.py<br/>tests/test_ai_hints.py (fake AI)"]
+        Eval["Reliability Evaluator<br/>evaluate_hints.py<br/>leak · fallback · error · latency rates"]
+        Human["👩‍💻 Developer<br/>reviews eval report, logs<br/>& hint quality"]
+    end
+    Pytest -.->|verifies| Logic
+    Pytest -.->|verifies| Filter
+    Eval -.->|runs many games against| Level
+    Eval --> Human
+    Logger --> Human

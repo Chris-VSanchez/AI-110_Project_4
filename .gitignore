@@ -41,3 +41,9 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Allow the example env file
+!.env.example
+
+# App logs
+logs/

@@ -1,0 +1,46 @@
+[Easy   secret=  4 vague        ] ai       It is an even number in the lower half of the range.
+[Easy   secret=  4 moderate     ] ai       It is a single-digit number that is a multiple of two.
+[Easy   secret=  4 specific     ] ai       It is a single-digit square number that is strictly less than five.
+[Easy   secret=  4 very specific] ai       It is the positive integer immediately following three, exactly midway between two and six.
+[Easy   secret=  1 vague        ] ai       It lives in the very first half of the allowed range.
+[Easy   secret=  1 moderate     ] ai       It is the very first odd number in our guessing range!
+[Easy   secret=  1 specific     ] ai       It is neither prime nor composite, and it is the only single-digit square that is also its own cube!
+[Easy   secret=  1 very specific] ai       It is the lowest possible positive integer, marking the absolute beginning of your entire guessing range.
+[Easy   secret=  9 vague        ] ai       That value lives in the lower half of the allowed range.
+[Easy   secret=  9 moderate     ] ai       It's an odd square number less than ten!
+[Easy   secret=  9 specific     ] ai       It is a prime number and also a multiple of three.
+[Easy   secret=  9 very specific] ai       This is your final try, so think of the single-digit prime that sits between eight and ten!
+[Normal secret= 32 vague        ] ai       That number is in the lower half of the range.
+[Normal secret= 32 moderate     ] ai       It is an even number that can be divided evenly by eight.
+[Normal secret= 32 specific     ] ai       It sits in the thirties decade, and the sum of its digits equals five.
+[Normal secret= 32 very specific] ai       This is your absolute final chance, so try the even multiple of sixteen that sits in the lower thirties!
+[Normal secret= 29 vague        ] ai       That mystery value is sitting comfortably in the lower half of the range.
+[Normal secret= 29 moderate     ] ai       It has two digits and can be evenly divided by three.
+[Normal secret= 29 specific     ] ai       It belongs in the twenties decade and has a digit sum equal to eleven!
+[Normal secret= 29 very specific] ai       It's greater than twenty-five and less than thirty, so make this final guess count!
+[Normal secret= 18 vague        ] ai       It lives in the very first half of our number line!
+[Normal secret= 18 moderate     ] ai       It is an even number that can be divided by three.
+[Normal secret= 18 specific     ] ai       It is in the late teens and the sum of its digits equals nine!
+[Normal secret= 18 very specific] ai       It is less than twenty, greater than sixteen, and a multiple of nine!
+[Hard   secret= 48 vague        ] ai       That value rests comfortably in the upper half of the allowed range.
+[Hard   secret= 48 moderate     ] ai       It is a multiple of six.
+[Hard   secret= 48 very specific] ai       This is your final guess, and it's an even number sitting right between forty-six and fifty!
+[Hard   secret=  7 vague        ] ai       It lives in the lower half of your range, and it doesn't like to be divided evenly by two.
+[Hard   secret=  7 moderate     ] ai       If you divide it by three, you will be left with a remainder of one!
+[Hard   secret=  7 very specific] ai       This is your final try, so think of the single-digit prime number that comes right after five!
+[Hard   secret= 44 vague        ] ai       That secret number is sitting comfortably in the upper half of the range!
+[Hard   secret= 44 moderate     ] ai       This even number is a multiple of eleven located in the forties.
+[Hard   secret= 44 very specific] ai       It's the highest possible even number in the forties, and your absolute final chance to get it right!
+
+=== AI Hint Reliability Report ===
+Hints generated        : 33  (33 AI calls)
+Raw leak rate (AI)     : 0.0%  <- responses filtered for revealing the answer
+Final leak rate        : 0.0%  <- must be 0%
+Fallback rate          : 0.0%
+Error rate             : 0.0%
+Repeated hint rate     : 0.0%
+Avg AI calls per hint  : 1.00
+Avg latency            : 654 ms
+Avg words by level     : vague=12.4, moderate=10.8, specific=14, very specific=16
+PASS: no answer reached the player.
+Saved results to logs/eval_results2.json
