@@ -134,6 +134,45 @@ Real outputs from `gemini-3.5-flash-lite`, copied from the app and `evaluation/g
 **Example 4: AI unavailable (no API key)**. The sidebar shows *"AI is offline (GEMINI_API_KEY is not set)"*,
 and the game gives built-in hints like 💡 "It's an odd number." and a fun fact like "91 is written as 1011011 in binary."
 
+**Example 5: end-to-end run, as recorded in `logs/game.log`**
+
+Start the app and play a game with 🤖 AI hints & facts turned on:
+
+```bash
+python -m streamlit run app.py
+```
+
+Each guess, AI hint and fun fact is logged as it happens. This is the game shown in the screenshot (Normal, 1–100):
+
+```text
+2026-11-23 01:25:55 | INFO    | glitch.app      | New game: difficulty=Normal range=1-100
+2026-11-23 01:25:56 | INFO    | glitch.ai_hints | Gemini client ready (model=gemini-3.5-flash-lite)
+2026-11-23 01:25:59 | INFO    | glitch.app      | Guess 25 -> Too Low (attempt 1/8)
+2026-11-23 01:25:59 | INFO    | glitch.ai_hints | Hint delivered: source=ai level=vague calls=1 filtered=0 latency=799ms text='That target is tucked away in the upper half of the range!'
+2026-11-23 01:26:01 | INFO    | glitch.app      | Guess 40 -> Too Low (attempt 2/8)
+2026-11-23 01:26:02 | INFO    | glitch.ai_hints | Hint delivered: source=ai level=vague calls=1 filtered=0 latency=466ms text='This number is odd, so you can cross all the evens off your list!'
+2026-11-23 01:26:04 | INFO    | glitch.app      | Guess 84 -> Too Low (attempt 3/8)
+2026-11-23 01:26:04 | INFO    | glitch.ai_hints | Hint delivered: source=ai level=moderate calls=1 filtered=0 latency=482ms text='Look in the high eighties, and think about which single-digit odd number evenly divides into it.'
+2026-11-23 01:26:06 | INFO    | glitch.app      | Guess 87 -> Win (attempt 4/8)
+2026-11-23 01:26:06 | INFO    | glitch.app      | Game over: status=won secret=87 score=55
+2026-11-23 01:26:07 | INFO    | glitch.ai_hints | Fun fact delivered: source=ai calls=1 latency=428ms text='Did you know 87 is the atomic number of the rare and radioactive element francium?'
+```
+
+**Example 6: the answer filter catching leaks (offline mock AI, secret = 4, Easy 1–20)**
+
+```bash
+python evaluate_hints.py --mock
+```
+
+```text
+INFO    | Hint requested: level=moderate attempts=2/6 range=1-20
+WARNING | FILTERED hint that revealed the answer (call 1): "Psst... it's 4!"
+WARNING | FILTERED hint that revealed the answer (call 2): "Psst... it's 4!"
+INFO    | Hint delivered: source=ai level=moderate calls=3 filtered=2 latency=0ms text="It's even."
+```
+
+The mock AI gave away the answer twice. Both responses were filtered and logged, and the player only saw the third, clean hint.
+
 ---
 
 ## 🧭 Design Decisions

@@ -139,3 +139,34 @@ purpose, and changing it would have been out of scope for the AI feature.
 | Hints that pointed to the answer without saying it | 10 / 33 (7 on the last-chance level) |
 | Error rate | 31% at 0.5 s spacing → **0%** at 4 s spacing |
 | Average latency | 654 ms per hint |
+
+---
+
+## 7. Future Improvements
+
+Each of these comes from something I saw while testing, not just general ideas.
+
+- **Catch hints that give the answer away without saying it.** My filter only blocks the number written
+  in digits or words, but 10 of 33 hints still pointed to exactly one number (for example, "the positive
+  integer immediately following three" for 4). Next, I would check how many numbers in the range still
+  fit the hint, and reject it if only one does before the player's last attempt.
+- **Fact-check simple math claims.** 4 of 33 hints were false, such as calling 9 a prime. I chose not to
+  verify every hint, but a lightweight check for the most common claims (even/odd, prime,
+  "divisible by", "between X and Y") would catch most of these errors without limiting what the AI can say.
+- **More variety in early hints.** The vague hints almost always say "lower/upper half" or "even/odd."
+  I would give the AI a rotating list of hint styles (riddles, comparisons, number trivia) so each game
+  feels different.
+- **Make "very specific" mean the same thing every time.** On the last attempt, some hints narrowed it to
+  about 5 numbers while others gave the answer away. I would tighten the prompt and add a test that
+  measures how many numbers each hint level leaves.
+- **Handle rate limits better.** My first evaluation run had a 31% error rate from free-tier rate limits.
+  I would cache fun facts per number, and add a per-player cooldown and a visible "AI is busy" message
+  instead of silently falling back.
+- **Make it safe to deploy publicly.** Hide the Developer Debug Info panel, stop writing the secret to the
+  logs (or keep logs only on the server), and limit AI calls per user so a public version can't be
+  abused or run up API costs.
+- **A larger, repeatable evaluation.** My numbers come from 33 real hints. I would run hundreds of hints
+  across several models, track accuracy and give-aways over time, and have a peer review a sample of hints
+  so the "human evaluation" isn't just me.
+- **Let players rate hints.** A 👍/👎 button on each hint would collect real feedback on which hints are
+  helpful, unfair or wrong, and could guide future prompt changes.
